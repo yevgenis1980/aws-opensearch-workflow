@@ -1,7 +1,8 @@
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/117a4ad9-d0a1-4c0c-aa4b-6345045a2232" />
+<img width="800" height="533" alt="image" src="https://github.com/user-attachments/assets/a1c20c31-e564-4408-9f07-479fbd32d730" />
 
 
-## AWS | Web Autoscaling
+
+## AWS | OpenSearch
 Architecture with public and private subnets, an Application Load Balancer (ALB), EC2 instances, and private resources. It demonstrates how users interact with the system, and how scaling and secure resource access are managed.
 
 
