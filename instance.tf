@@ -33,34 +33,6 @@ unzip latest.zip
 mv wordpress/* .
 rm -rf wordpress latest.zip
 
-# Mount EFS for wp-content
-mkdir -p /var/www/html/wp-content
-mount -t nfs4 -o nfsvers=4.1 ${aws_efs_file_system.wordpress.dns_name}:/ /var/www/html/wp-content
-echo "${aws_efs_file_system.wordpress.dns_name}:/ /var/www/html/wp-content nfs4 defaults,_netdev 0 0" >> /etc/fstab
-
-# Permissions
-chown -R www-data:www-data /var/www/html
-chmod -R 755 /var/www/html
-
-# Configure wp-config.php only if missing
-if [ ! -f /var/www/html/wp-config.php ]; then
-cat > /var/www/html/wp-config.php <<EOC
-<?php
-define('DB_NAME', '${var.db_name}');
-define('DB_USER', '${var.db_username}');
-define('DB_PASSWORD', '${var.db_password}');
-define('DB_HOST', '${aws_db_instance.wordpress.address}');
-define('DB_CHARSET', 'utf8');
-define('DB_COLLATE', '');
-define('WP_HOME', 'https://${var.domain_name}');
-define('WP_SITEURL', 'https://${var.domain_name}');
-\$table_prefix = 'wp_';
-define('WP_DEBUG', false);
-if (!defined('ABSPATH'))
-  define('ABSPATH', dirname(__FILE__) . '/');
-require_once(ABSPATH . 'wp-settings.php');
-EOC
-fi
 
 systemctl restart apache2
 EOF
@@ -69,7 +41,7 @@ EOF
   block_device_mappings {
     device_name = "/dev/sda1"
     ebs {
-      volume_size           = 100
+      volume_size           = 10
       volume_type           = "gp3"
       delete_on_termination = true
     }
@@ -89,7 +61,7 @@ resource "aws_autoscaling_group" "asg" {
   name             = "app-asg"
   min_size         = 1
   max_size         = 7
-  desired_capacity = 2
+  desired_capacity = 1
 
   vpc_zone_identifier = aws_subnet.public[*].id
 
@@ -107,53 +79,3 @@ resource "aws_autoscaling_group" "asg" {
     propagate_at_launch = true
   }
 }
-
-# -----------------------------
-# CLOUDWATCH ALARMS FOR SCALING
-# -----------------------------
-resource "aws_autoscaling_policy" "scale_up" {
-  name                   = "scale-up"
-  autoscaling_group_name = aws_autoscaling_group.asg.name
-  adjustment_type        = "ChangeInCapacity"
-  scaling_adjustment     = 1
-  cooldown               = 300
-}
-
-resource "aws_autoscaling_policy" "scale_down" {
-  name                   = "scale-down"
-  autoscaling_group_name = aws_autoscaling_group.asg.name
-  adjustment_type        = "ChangeInCapacity"
-  scaling_adjustment     = -1
-  cooldown               = 300
-}
-
-resource "aws_cloudwatch_metric_alarm" "cpu_high" {
-  alarm_name          = "cpu-high"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 2
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/EC2"
-  period              = 60
-  statistic           = "Average"
-  threshold           = 70
-  alarm_actions       = [aws_autoscaling_policy.scale_up.arn]
-  dimensions = {
-    AutoScalingGroupName = aws_autoscaling_group.asg.name
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "cpu_low" {
-  alarm_name          = "cpu-low"
-  comparison_operator = "LessThanThreshold"
-  evaluation_periods  = 2
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/EC2"
-  period              = 60
-  statistic           = "Average"
-  threshold           = 20
-  alarm_actions       = [aws_autoscaling_policy.scale_down.arn]
-  dimensions = {
-    AutoScalingGroupName = aws_autoscaling_group.asg.name
-  }
-}
-
