@@ -1,3 +1,4 @@
+
 # -----------------------------
 #      EC2 INSTANCES GROUP
 # -----------------------------
@@ -32,7 +33,6 @@ wget https://wordpress.org/latest.zip
 unzip latest.zip
 mv wordpress/* .
 rm -rf wordpress latest.zip
-
 
 systemctl restart apache2
 EOF
